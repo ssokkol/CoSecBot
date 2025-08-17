@@ -28,20 +28,9 @@ class DatabaseManager:
                         user_id INTEGER UNIQUE NOT NULL,
                         messages INTEGER DEFAULT 0,
                         voice_time INTEGER DEFAULT 0,
-                        money INTEGER DEFAULT 0,
-                        daily INTEGER DEFAULT 0,
-                        role_id2 INTEGER DEFAULT 0,
-                        role_id3 INTEGER DEFAULT 0,
-                        contributor BOOLEAN DEFAULT FALSE
+                        money INTEGER DEFAULT 0
                     )
                 ''')
-                
-                # Добавляем поле contributor если его нет
-                try:
-                    cursor.execute('ALTER TABLE users ADD COLUMN contributor BOOLEAN DEFAULT FALSE')
-                except sqlite3.OperationalError:
-                    # Колонка уже существует
-                    pass
                 
                 conn.commit()
                 logger.info("База данных инициализирована успешно")
@@ -113,8 +102,8 @@ class UserDatabase:
         """Добавляет нового пользователя"""
         try:
             await self.db.execute_query(
-                "INSERT INTO `users` (user_id, messages, voice_time, money, daily, role_id2, role_id3, contributor) VALUES (?,?,?,?,?,?,?,?)",
-                (user_id, 0, 0, 0, 0, 0, 0, False)
+                "INSERT INTO `users` (user_id, messages, voice_time, money) VALUES (?,?,?,?)",
+                (user_id, 0, 0, 0)
             )
             return True
         except Exception as e:
@@ -191,26 +180,6 @@ class UserDatabase:
             return True
         except Exception as e:
             logger.error(f"Ошибка добавления времени в войсе: {e}")
-            return False
-
-    async def is_contributor(self, user_id: int) -> bool:
-        """Проверяет, является ли пользователь контрибьютором"""
-        result = await self.db.fetch_one(
-            "SELECT `contributor` FROM `users` WHERE `user_id` = ?", 
-            (user_id,)
-        )
-        return bool(result[0]) if result else False
-    
-    async def set_contributor(self, user_id: int, is_contributor: bool) -> bool:
-        """Устанавливает статус контрибьютора"""
-        try:
-            await self.db.execute_query(
-                'UPDATE `users` SET `contributor` = ? WHERE user_id = ?', 
-                (is_contributor, user_id)
-            )
-            return True
-        except Exception as e:
-            logger.error(f"Ошибка установки статуса контрибьютора: {e}")
             return False
 
 class TopDatabase:

@@ -14,11 +14,15 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Create necessary directories and set permissions
+RUN mkdir -p /app/logs /app/assets/avatars /app/assets/badges /app/assets/fonts /app/assets/templates \
+    && chmod -R 777 /app
+
 # Copy the rest of the application
 COPY . .
 
-# Create necessary directories if they don't exist
-RUN mkdir -p /app/assets/avatars /app/assets/badges /app/assets/fonts /app/assets/templates
+# Ensure database directory is writable
+RUN touch database.db && chmod 666 database.db
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
