@@ -4,9 +4,10 @@ services:
   bot:
     build: .
     volumes:
+      - ./logs:/app/logs
       - ./database.db:/app/database.db
       - ./assets:/app/assets
-      - ./bot.log:/app/bot.log
-    env_file:
-      - .env
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+    command: python main.py
     restart: unless-stopped
