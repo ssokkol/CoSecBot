@@ -1,41 +1,12 @@
 version: '3.8'
 
 services:
-  discord-bot:
+  bot:
     build: .
-    container_name: discord-bot
-    restart: unless-stopped
     volumes:
-      - ./data:/app/data
-    environment:
-      - DISCORD_TOKEN=${DISCORD_TOKEN}
-      - GUILD_ID=${GUILD_ID}
-      - ADMIN_USER_ID=${ADMIN_USER_ID}
-      - DATABASE_PATH=data/club.db
-      - BOT_ACTIVITY_NAME=${BOT_ACTIVITY_NAME:-Playing}
-      - TRANSFER_COMMISSION_RATE=${TRANSFER_COMMISSION_RATE:-0.1}
-      - RING_PRICE=${RING_PRICE:-100000}
-      - INITIAL_MONEY=${INITIAL_MONEY:-10}
-      - INITIAL_MESSAGES=${INITIAL_MESSAGES:-1}
-      - ADMIN_ROLES=${ADMIN_ROLES}
-      - BADGE_ROLES=${BADGE_ROLES}
-      - CONTRIBUTOR_ROLE_ID=${CONTRIBUTOR_ROLE_ID}
-      - TESTER_ROLE_ID=${TESTER_ROLE_ID}
-      - MAINTAINER_ROLE_ID=${MAINTAINER_ROLE_ID}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - DEBUG_MODE=${DEBUG_MODE:-false}
-      - VOICE_TIME_REWARD=${VOICE_TIME_REWARD:-1}
-      - VOICE_MONEY_REWARD=${VOICE_MONEY_REWARD:-20}
-      - VOICE_CHECK_INTERVAL=${VOICE_CHECK_INTERVAL:-1}
+      - ./database.db:/app/database.db
+      - ./assets:/app/assets
+      - ./bot.log:/app/bot.log
     env_file:
       - .env
-    networks:
-      - bot-network
-
-networks:
-  bot-network:
-    driver: bridge
-
-volumes:
-  data:
-  logs:
+    restart: unless-stopped

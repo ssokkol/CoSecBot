@@ -72,26 +72,26 @@ class DiscordBot(commands.Bot):
     
     def setup_events(self):
         """Настраивает события бота"""
-        
+
         @self.event
         async def on_ready():
             """Событие готовности бота"""
             logger.info(f'{self.user} успешно подключился к Discord!')
-            
+
             # Синхронизация команд
             try:
                 synced = await self.tree.sync(guild=discord.Object(id=self.config.GUILD_ID))
                 logger.info(f"Синхронизировано {len(synced)} команд")
             except Exception as e:
                 logger.error(f"Ошибка синхронизации команд: {e}")
-            
+
             # Установка активности
             activity = discord.Activity(
-                type=discord.ActivityType.listening, 
+                type=discord.ActivityType.listening,
                 name=self.config.BOT_ACTIVITY_NAME
             )
             await self.change_presence(
-                activity=activity, 
+                activity=activity,
                 status=discord.Status.do_not_disturb
             )
             logger.info('Sombra Online')
@@ -120,13 +120,11 @@ class DiscordBot(commands.Bot):
                                 await self.user_db.add_user(member.id)
                                 await self.user_db.add_voice_time(member.id, self.config.VOICE_TIME_REWARD)
                                 await self.user_db.add_money(member.id, self.config.VOICE_MONEY_REWARD)
-                                logger.info(f'Пользователь {member.name} получил {self.config.VOICE_TIME_REWARD} минут и {self.config.VOICE_MONEY_REWARD} рублей')
                             else:
                                 # Проверяем, не глушит ли пользователь сам себя
                                 if not member.voice.self_mute:
                                     await self.user_db.add_voice_time(member.id, self.config.VOICE_TIME_REWARD)
                                     await self.user_db.add_money(member.id, self.config.VOICE_MONEY_REWARD)
-                                    logger.info(f'Пользователь {member.name} получил {self.config.VOICE_TIME_REWARD} минут и {self.config.VOICE_MONEY_REWARD} рублей')
         except Exception as e:
             logger.error(f"Ошибка проверки голосовых каналов: {e}")
     
@@ -166,7 +164,6 @@ class DiscordBot(commands.Bot):
             """Команда для отображения справки"""
             help_text = (
                 '/rules - список правил\n'
-                '/report - отправить жалобу на пользователя\n'
                 '/profile - ваша статистика на сервере\n\n'
                 '**Банковские операции**\n'
                 '/transfer - перевести деньги пользователю(комиссия 10%)\n\n'
@@ -182,29 +179,6 @@ class DiscordBot(commands.Bot):
                 '/rem - снять деньги'
             )
             await interaction.response.send_message(help_text, ephemeral=True)
-        
-        @self.tree.command(
-            name="report", 
-            description="Написать репорт на юзера",
-            guild=discord.Object(id=self.config.GUILD_ID)
-        )
-        async def report(interaction: discord.Interaction, user: discord.Member, reason: str):
-            """Команда для отправки жалобы на пользователя"""
-            await interaction.response.send_message(
-                f'Репорт на пользователя {user.mention} отправлен\nПричина: {reason}',
-                ephemeral=True
-            )
-            
-            # Отправляем уведомление администрации
-            admin_mentions = ' '.join([f'<@&{role_id}>' for role_id in self.config.ADMIN_ROLES])
-            channel = self.get_channel(1065741036615389226)  # ID канала для жалоб
-            
-            if channel:
-                await channel.send(
-                    f"{admin_mentions}\n"
-                    f"Репорт на {user.mention} от {interaction.user.mention}\n"
-                    f"Причина: {reason}"
-                )
         
         @self.tree.command(
             name="profile", 
