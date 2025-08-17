@@ -93,8 +93,7 @@ class ProfileCommands(BaseCommand):
     
     async def show_profile(self, interaction: discord.Interaction, user: discord.Member) -> None:
         """Показывает профиль пользователя"""
-        await interaction.response.defer()
-        
+        await interaction.response.defer(ephemeral=False)
         try:
             # Получаем данные пользователя
             messages = await self.user_db.get_messages(user.id)
@@ -135,7 +134,7 @@ class ProfileCommands(BaseCommand):
             success = await self.image_generator.generate_profile_image(user_data, output_path)
             
             if not success:
-                await interaction.followup.send('Ошибка генерации изображения профиля', ephemeral=True)
+                await interaction.response.send_message('Ошибка генерации изображения профиля', ephemeral=True)
                 return
             
             # Добавляем значки
@@ -145,7 +144,7 @@ class ProfileCommands(BaseCommand):
             if os.path.exists(output_path):
                 file = discord.File(output_path)
                 await interaction.followup.send(file=file)
-                
+
                 # Удаляем временный файл
                 try:
                     os.remove(output_path)
@@ -153,7 +152,7 @@ class ProfileCommands(BaseCommand):
                     logger.warning(f"Не удалось удалить временный файл: {e}")
             else:
                 await interaction.followup.send('Ошибка: файл профиля не найден', ephemeral=True)
-                
+
         except Exception as e:
             logger.error(f"Ошибка при получении профиля: {e}")
             await interaction.followup.send(f'Ошибка при получении профиля: {e}', ephemeral=True)
