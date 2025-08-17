@@ -74,15 +74,6 @@ Thumbs.db
 output_*.png
 temp/
 
-# Old files (старые файлы для миграции)
-main.py
-main2.py
-db.py
-config.py
-config2.py
-requirements.txt
-witch.db
-
 # Generated images
 output.png
 output_*.png
