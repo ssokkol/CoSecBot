@@ -170,8 +170,6 @@ class DiscordBot(commands.Bot):
                 '/profile - ваша статистика на сервере\n\n'
                 '**Банковские операции**\n'
                 '/transfer - перевести деньги пользователю(комиссия 10%)\n\n'
-                '**Коллекция**\n'
-                '/ring - купить кольцо\n\n'
                 '**Топ участников**\n'
                 '/voice - топ по времени в войсе\n'
                 '/messages - топ по сообщениям\n'
@@ -274,15 +272,6 @@ class DiscordBot(commands.Bot):
         async def transfer(interaction: discord.Interaction, user: discord.Member, amount: int):
             """Команда для перевода денег"""
             await self.economy_commands.transfer_money(interaction, user, amount)
-        
-        @self.tree.command(
-            name="ring", 
-            description="Купить кольцо (100.000руб+10% комиссия)",
-            guild=discord.Object(id=self.config.GUILD_ID)
-        )
-        async def ring(interaction: discord.Interaction):
-            """Команда для покупки кольца"""
-            await self.economy_commands.buy_ring(interaction)
         
         # Команды топов
         @self.tree.command(
