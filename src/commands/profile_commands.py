@@ -1,5 +1,4 @@
 import discord
-from discord import app_commands
 from discord.ext import commands
 import os
 from datetime import timedelta
@@ -92,7 +91,7 @@ class ProfileCommands(BaseCommand):
             return text[:max_length-3] + "..."
         return text
     
-    async def show_profile(self, interaction: app_commands.Interaction, user: discord.Member) -> None:
+    async def show_profile(self, interaction: discord.Interaction, user: discord.Member) -> None:
         """Показывает профиль пользователя"""
         await interaction.response.defer()
         
@@ -101,8 +100,7 @@ class ProfileCommands(BaseCommand):
             messages = await self.user_db.get_messages(user.id)
             money = await self.user_db.get_money(user.id)
             voice_time = await self.user_db.get_voice_time(user.id)
-            is_contributor = await self.user_db.is_contributor(user.id)
-            
+
             # Форматируем данные
             messages_formatted = self.format_money(messages)
             messages_formatted = self.truncate_text(messages_formatted, 14)
@@ -119,24 +117,17 @@ class ProfileCommands(BaseCommand):
             
             # Ник
             nickname = self.truncate_text(str(user.name), 12)
-            
-            # Статус
-            status = user.status
-            
-            # Роли для значков
-            user_roles = [str(role.id) for role in user.roles]
-            
+            member = interaction.guild.get_member(user.id)
             # Подготавливаем данные для генерации изображения
             user_data = {
-                'status': str(status),
+                'status': str(member.status),
                 'avatar_url': str(user.avatar.url) if user.avatar else None,
                 'nickname': nickname,
                 'created_date': created_date,
                 'joined_date': joined_date,
                 'balance': money_formatted,
                 'messages': messages_formatted,
-                'voice_time': voice_time_formatted,
-                'is_contributor': is_contributor
+                'voice_time': voice_time_formatted
             }
             
             # Генерируем изображение профиля
@@ -148,8 +139,8 @@ class ProfileCommands(BaseCommand):
                 return
             
             # Добавляем значки
-            await self.image_generator.add_badges_to_profile(output_path, user_roles)
-            
+            await self.image_generator.add_badges_to_profile(output_path, [str(role.id) for role in user.roles])
+
             # Отправляем файл
             if os.path.exists(output_path):
                 file = discord.File(output_path)
@@ -166,3 +157,9 @@ class ProfileCommands(BaseCommand):
         except Exception as e:
             logger.error(f"Ошибка при получении профиля: {e}")
             await interaction.followup.send(f'Ошибка при получении профиля: {e}', ephemeral=True)
+
+    async def execute(self, interaction: discord.Interaction, **kwargs) -> None:
+        """
+        Базовый метод выполнения команд профиля
+        """
+        pass

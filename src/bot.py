@@ -6,13 +6,13 @@ import locale
 import logging
 from typing import Optional
 
-from .config import Config
-from .database import DatabaseManager, UserDatabase, TopDatabase
-from .image_generator import ProfileImageGenerator
-from .commands.admin_commands import AdminCommands
-from .commands.economy_commands import EconomyCommands
-from .commands.top_commands import TopCommands
-from .commands.profile_commands import ProfileCommands
+from src.config import Config
+from src.database import DatabaseManager, UserDatabase, TopDatabase
+from src.image_generator import ProfileImageGenerator
+from src.commands.admin_commands import AdminCommands
+from src.commands.economy_commands import EconomyCommands
+from src.commands.top_commands import TopCommands
+from src.commands.profile_commands import ProfileCommands
 
 # Настройка логирования
 logging.basicConfig(
@@ -29,19 +29,15 @@ class DiscordBot(commands.Bot):
     """Основной класс Discord бота"""
     
     def __init__(self):
-        intents = discord.Intents.all()
+        intents = discord.Intents.all()  # defining intents
+        intents.members = True
         super().__init__(command_prefix='!', intents=intents)
-        
+
         # Инициализация конфигурации
         self.config = Config()
-        
-        # Валидация конфигурации
-        if not self.config.validate():
-            logger.error("Ошибка валидации конфигурации!")
-            raise ValueError("Некорректная конфигурация бота")
-        
+
         # Инициализация базы данных
-        self.db_manager = DatabaseManager(self.config.DATABASE_PATH)
+        self.db_manager = DatabaseManager('database.db')
         self.user_db = UserDatabase(self.db_manager)
         self.top_db = TopDatabase(self.db_manager)
         
@@ -119,24 +115,18 @@ class DiscordBot(commands.Bot):
             for guild in self.guilds:
                 for channel in guild.voice_channels:
                     for member in channel.members:
-                        if not member.bot:
+                        if not member.bot and not member.voice.self_deaf and not member.voice.afk:
                             if not await self.user_db.user_exists(member.id):
                                 await self.user_db.add_user(member.id)
                                 await self.user_db.add_voice_time(member.id, self.config.VOICE_TIME_REWARD)
                                 await self.user_db.add_money(member.id, self.config.VOICE_MONEY_REWARD)
-                                
-                                # Проверяем, является ли пользователь контрибьютором, тестером или мейнтейнером
-                                user_roles = [str(role.id) for role in member.roles]
-                                if (str(self.config.CONTRIBUTOR_ROLE_ID) in user_roles or 
-                                    str(self.config.TESTER_ROLE_ID) in user_roles or
-                                    str(self.config.MAINTAINER_ROLE_ID) in user_roles):
-                                    await self.user_db.set_contributor(member.id, True)
-                                
-                                logger.debug(f'Добавлен новый пользователь в голосовом канале: {member.name}')
+                                logger.info(f'Пользователь {member.name} получил {self.config.VOICE_TIME_REWARD} минут и {self.config.VOICE_MONEY_REWARD} рублей')
                             else:
-                                await self.user_db.add_voice_time(member.id, self.config.VOICE_TIME_REWARD)
-                                await self.user_db.add_money(member.id, self.config.VOICE_MONEY_REWARD)
-                                logger.debug(f'Обновлена статистика пользователя в голосовом канале: {member.name}')
+                                # Проверяем, не глушит ли пользователь сам себя
+                                if not member.voice.self_mute:
+                                    await self.user_db.add_voice_time(member.id, self.config.VOICE_TIME_REWARD)
+                                    await self.user_db.add_money(member.id, self.config.VOICE_MONEY_REWARD)
+                                    logger.info(f'Пользователь {member.name} получил {self.config.VOICE_TIME_REWARD} минут и {self.config.VOICE_MONEY_REWARD} рублей')
         except Exception as e:
             logger.error(f"Ошибка проверки голосовых каналов: {e}")
     
@@ -329,13 +319,6 @@ class DiscordBot(commands.Bot):
                 await self.user_db.add_user(message.author.id)
                 await self.user_db.add_message(message.author.id, self.config.INITIAL_MESSAGES)
                 await self.user_db.add_money(message.author.id, self.config.INITIAL_MONEY)
-                
-                # Проверяем, является ли пользователь контрибьютором, тестером или мейнтейнером
-                user_roles = [str(role.id) for role in message.author.roles]
-                if (str(self.config.CONTRIBUTOR_ROLE_ID) in user_roles or 
-                    str(self.config.TESTER_ROLE_ID) in user_roles or
-                    str(self.config.MAINTAINER_ROLE_ID) in user_roles):
-                    await self.user_db.set_contributor(message.author.id, True)
             else:
                 await self.user_db.add_message(message.author.id, 1)
         except Exception as e:

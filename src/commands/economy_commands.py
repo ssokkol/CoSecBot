@@ -1,5 +1,4 @@
 import discord
-from discord import app_commands
 from discord.ext import commands
 import locale
 import logging
@@ -34,7 +33,7 @@ class EconomyCommands(BaseCommand):
         except:
             return str(amount)
     
-    async def transfer_money(self, interaction: app_commands.Interaction, user: discord.Member, amount: int) -> None:
+    async def transfer_money(self, interaction: discord.Interaction, user: discord.Member, amount: int) -> None:
         """Переводит деньги между пользователями"""
         if amount <= 0:
             await interaction.response.send_message('Вы как собрались `0руб` переводить?')
@@ -63,7 +62,7 @@ class EconomyCommands(BaseCommand):
             logger.error(f"Ошибка при переводе: {e}")
             await interaction.response.send_message(f'Ошибка при переводе: {e}', ephemeral=True)
     
-    async def _send_transfer_notifications(self, interaction: app_commands.Interaction, recipient: discord.Member, 
+    async def _send_transfer_notifications(self, interaction: discord.Interaction, recipient: discord.Member,
                                          amount: int, commission: int, total_cost: int):
         """Отправляет уведомления о переводе"""
         try:
@@ -95,50 +94,9 @@ class EconomyCommands(BaseCommand):
             
         except Exception as e:
             logger.error(f"Ошибка отправки уведомлений о переводе: {e}")
-    
-    async def buy_ring(self, interaction: app_commands.Interaction) -> None:
-        """Покупает кольцо для коллекции"""
-        try:
-            current_rings = await self.user_db.get_ring(interaction.user.id)
-            
-            if current_rings > 0:
-                await interaction.response.send_message('У вас уже есть кольцо')
-                return
-            
-            user_balance = await self.user_db.get_money(interaction.user.id)
-            commission = int(self.config.RING_PRICE * self.config.TRANSFER_COMMISSION_RATE)
-            total_cost = self.config.RING_PRICE + commission
-            
-            if user_balance < total_cost:
-                # Отправляем уведомление об ошибке
-                channel = await interaction.user.create_dm()
-                embed = discord.Embed(
-                    color=0xff0000, 
-                    title='Ошибка',
-                    description=f'Покупка кольца\nНедостаточно средств для совершения операции\nВаш баланс: `{self.format_money(user_balance)}руб`'
-                )
-                await channel.send(embed=embed)
-                await interaction.response.send_message('Ошибка')
-                return
-            
-            # Покупаем кольцо
-            await self.user_db.rem_money(interaction.user.id, total_cost)
-            await self.user_db.add_money(self.config.ADMIN_USER_ID, total_cost)  # Деньги серверу
-            await self.user_db.add_ring(interaction.user.id, 1)
-            
-            # Отправляем уведомление об успешной покупке
-            channel = await interaction.user.create_dm()
-            new_balance = await self.user_db.get_money(interaction.user.id)
-            
-            embed = discord.Embed(
-                color=0xfade34, 
-                title='Транзакция',
-                description=f'Покупка кольца\nС вашего счета списано `{self.format_money(self.config.RING_PRICE)}руб+({self.format_money(commission)}руб комиссии)`\nВаш баланс: `{self.format_money(new_balance)}руб`'
-            )
-            await channel.send(embed=embed)
-            
-            await interaction.response.send_message('Успешно!')
-            
-        except Exception as e:
-            logger.error(f"Ошибка при покупке кольца: {e}")
-            await interaction.response.send_message(f'Ошибка при покупке кольца: {e}', ephemeral=True)
+
+    async def execute(self, interaction: discord.Interaction, **kwargs) -> None:
+        """
+        Базовый метод выполнения экономической команды
+        """
+        pass

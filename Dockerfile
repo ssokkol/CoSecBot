@@ -10,26 +10,16 @@ RUN apt-get update && apt-get install -y \
     g++ \
     libjpeg-dev \
     libfreetype6-dev \
-    liblcms2-dev \
-    libopenjp2-7-dev \
-    libtiff5-dev \
-    libwebp-dev \
-    libharfbuzz-dev \
-    libfribidi-dev \
-    libxcb1-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Копируем файлы зависимостей
-COPY requirements_refactored.txt .
+COPY requirements.txt .
 
 # Устанавливаем Python зависимости
-RUN pip install --no-cache-dir -r requirements_refactored.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем исходный код
+# Копируем исходный код и ресурсы
 COPY src/ ./src/
-COPY main_refactored.py .
-
-# Копируем ресурсы в новую структуру
 COPY assets/ ./assets/
 
 # Создаем пользователя для безопасности
@@ -37,8 +27,5 @@ RUN useradd --create-home --shell /bin/bash bot
 RUN chown -R bot:bot /app
 USER bot
 
-# Открываем порт (если понадобится для веб-интерфейса)
-EXPOSE 8000
-
 # Команда по умолчанию
-CMD ["python", "main_refactored.py"]
+CMD ["python", "-m", "src.bot"]

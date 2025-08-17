@@ -1,5 +1,4 @@
 import discord
-from discord import app_commands
 from discord.ext import commands
 from typing import List, Tuple
 from datetime import timedelta
@@ -80,7 +79,7 @@ class TopCommands(BaseCommand):
         except:
             return str(amount)
     
-    async def show_voice_top(self, interaction: app_commands.Interaction, limit: int = 5) -> None:
+    async def show_voice_top(self, interaction: discord.Interaction, limit: int = 5) -> None:
         """Показывает топ по времени в голосовых каналах"""
         try:
             top_data = await self.top_db.get_voice_top(limit)
@@ -99,7 +98,7 @@ class TopCommands(BaseCommand):
         except Exception as e:
             await interaction.response.send_message(f'Ошибка при получении топа: {e}', ephemeral=True)
     
-    async def show_messages_top(self, interaction: app_commands.Interaction, limit: int = 5) -> None:
+    async def show_messages_top(self, interaction: discord.Interaction, limit: int = 5) -> None:
         """Показывает топ по сообщениям"""
         try:
             top_data = await self.top_db.get_messages_top(limit)
@@ -117,7 +116,7 @@ class TopCommands(BaseCommand):
         except Exception as e:
             await interaction.response.send_message(f'Ошибка при получении топа: {e}', ephemeral=True)
     
-    async def show_balance_top(self, interaction: app_commands.Interaction, limit: int = 5) -> None:
+    async def show_balance_top(self, interaction: discord.Interaction, limit: int = 5) -> None:
         """Показывает топ по балансу"""
         try:
             top_data = await self.top_db.get_balance_top(limit)
@@ -136,7 +135,7 @@ class TopCommands(BaseCommand):
         except Exception as e:
             await interaction.response.send_message(f'Ошибка при получении топа: {e}', ephemeral=True)
     
-    async def show_general_top(self, interaction: app_commands.Interaction, top_type: str, limit: int = 5) -> None:
+    async def show_general_top(self, interaction: discord.Interaction, top_type: str, limit: int = 5) -> None:
         """Показывает общий топ по указанному типу"""
         try:
             if top_type == "voice":
@@ -150,3 +149,9 @@ class TopCommands(BaseCommand):
                 
         except Exception as e:
             await interaction.response.send_message(f'Ошибка при получении топа: {e}', ephemeral=True)
+
+    async def execute(self, interaction: discord.Interaction, **kwargs) -> None:
+        """
+        Базовый метод выполнения команд топов
+        """
+        pass

@@ -30,7 +30,6 @@ class DatabaseManager:
                         voice_time INTEGER DEFAULT 0,
                         money INTEGER DEFAULT 0,
                         daily INTEGER DEFAULT 0,
-                        ring INTEGER DEFAULT 0,
                         role_id2 INTEGER DEFAULT 0,
                         role_id3 INTEGER DEFAULT 0,
                         contributor BOOLEAN DEFAULT FALSE
@@ -114,8 +113,8 @@ class UserDatabase:
         """Добавляет нового пользователя"""
         try:
             await self.db.execute_query(
-                "INSERT INTO `users` (user_id, messages, voice_time, money, daily, ring, role_id2, role_id3, contributor) VALUES (?,?,?,?,?,?,?,?,?)",
-                (user_id, 0, 0, 0, 0, 0, 0, 0, False)
+                "INSERT INTO `users` (user_id, messages, voice_time, money, daily, role_id2, role_id3, contributor) VALUES (?,?,?,?,?,?,?,?)",
+                (user_id, 0, 0, 0, 0, 0, 0, False)
             )
             return True
         except Exception as e:
@@ -193,39 +192,7 @@ class UserDatabase:
         except Exception as e:
             logger.error(f"Ошибка добавления времени в войсе: {e}")
             return False
-    
-    async def get_ring(self, user_id: int) -> int:
-        """Получает количество колец у пользователя"""
-        result = await self.db.fetch_one(
-            "SELECT `ring` FROM `users` WHERE `user_id` = ?", 
-            (user_id,)
-        )
-        return result[0] if result else 0
-    
-    async def add_ring(self, user_id: int, count: int) -> bool:
-        """Добавляет кольца пользователю"""
-        try:
-            await self.db.execute_query(
-                'UPDATE `users` SET `ring` = ? WHERE user_id = ?', 
-                (count, user_id)
-            )
-            return True
-        except Exception as e:
-            logger.error(f"Ошибка добавления кольца: {e}")
-            return False
-    
-    async def rem_ring(self, user_id: int) -> bool:
-        """Убирает кольца у пользователя"""
-        try:
-            await self.db.execute_query(
-                'UPDATE `users` SET `ring` = 0 WHERE user_id = ?', 
-                (user_id,)
-            )
-            return True
-        except Exception as e:
-            logger.error(f"Ошибка удаления кольца: {e}")
-            return False
-    
+
     async def is_contributor(self, user_id: int) -> bool:
         """Проверяет, является ли пользователь контрибьютором"""
         result = await self.db.fetch_one(

@@ -1,4 +1,4 @@
-#!/bin/bash
+djn#!/bin/bash
 
 echo "Запуск Discord бота..."
 echo
@@ -10,31 +10,22 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
-# Проверяем наличие виртуального окружения
+# Проверяем наличие файла .env
+if [ ! -f .env ]; then
+    echo "Ошибка: Файл .env не найден!"
+    echo "Создайте файл .env на основе env.example"
+    exit 1
+fi
+
+# Создаем виртуальное окружение, если его нет
 if [ ! -d "venv" ]; then
     echo "Создание виртуального окружения..."
     python3 -m venv venv
 fi
 
-# Активируем виртуальное окружение
-echo "Активация виртуального окружения..."
+# Активируем виртуальное окружение и устанавливаем зависимости
 source venv/bin/activate
-
-# Устанавливаем зависимости
-echo "Установка зависимостей..."
-pip install -r requirements_refactored.txt
-
-# Проверяем наличие .env файла
-if [ ! -f ".env" ]; then
-    echo "Создание .env файла..."
-    cp env.example .env
-    echo
-    echo "ВНИМАНИЕ: Создан файл .env на основе env.example"
-    echo "Отредактируйте .env файл, добавив ваш Discord токен!"
-    echo
-    read -p "Нажмите Enter для продолжения..."
-fi
+pip install -r requirements.txt
 
 # Запускаем бота
-echo "Запуск бота..."
-python main_refactored.py
+python -m src.bot

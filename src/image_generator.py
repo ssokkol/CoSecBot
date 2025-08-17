@@ -39,6 +39,33 @@ class ProfileImageGenerator:
             logger.error(f"Ошибка загрузки аватара: {e}")
             return None
     
+    async def _create_rounded_avatar(self, image: Image.Image, size: tuple) -> Optional[Image.Image]:
+        """Создает круглый аватар из изображения"""
+        try:
+            # Создаем маску
+            mask = Image.new('L', size, 0)
+            draw = ImageDraw.Draw(mask)
+            draw.ellipse((0, 0) + size, fill=255)
+
+            # Изменяем размер изображения и применяем маску
+            output = ImageOps.fit(image, size, centering=(0.5, 0.5))
+            output.putalpha(mask)
+
+            return output
+        except Exception as e:
+            logger.error(f"Ошибка создания круглого аватара: {e}")
+            return None
+
+    async def _add_text(self, image: Image.Image, text: str, position: tuple,
+                     font_size: int, color: tuple = (255, 255, 255)) -> None:
+        """Добавляет текст на изображение"""
+        try:
+            draw = ImageDraw.Draw(image)
+            font = ImageFont.truetype(self.font_path, font_size)
+            draw.text(position, text, font=font, fill=color)
+        except Exception as e:
+            logger.error(f"Ошибка добавления текста: {e}")
+
     def create_circular_avatar(self, avatar: Image.Image, size: tuple) -> Image.Image:
         """Создает круглый аватар"""
         try:
@@ -48,7 +75,7 @@ class ProfileImageGenerator:
             # Создаем маску для круглой формы
             bigsize = (avatar.size[0] * 3, avatar.size[1] * 3)
             mask = Image.new('L', bigsize, 0)
-            draw = Image.Draw(mask)
+            draw = ImageDraw.Draw(mask)
             draw.ellipse((0, 0) + bigsize, fill=255)
             
             # Применяем маску
@@ -64,18 +91,12 @@ class ProfileImageGenerator:
                           font_size: int = 64, color: tuple = (255, 255, 255)) -> Image.Image:
         """Добавляет текст на изображение"""
         try:
+            draw = ImageDraw.Draw(img)
             font = ImageFont.truetype(self.font_path, font_size)
-        except Exception as e:
-            logger.warning(f"Не удалось загрузить шрифт {self.font_path}: {e}")
-            # Fallback на стандартный шрифт
-            font = ImageFont.load_default()
-        
-        try:
-            draw = Image.Draw(img)
-            draw.text(position, text, color, font=font)
+            draw.text(position, text, font=font, fill=color)
         except Exception as e:
             logger.error(f"Ошибка добавления текста: {e}")
-        
+
         return img
     
     def truncate_text(self, text: str, max_length: int) -> str:
@@ -87,10 +108,19 @@ class ProfileImageGenerator:
     async def generate_profile_image(self, user_data: dict, output_path: str = "output.png") -> bool:
         """Генерирует изображение профиля пользователя"""
         try:
-            # Получаем статус пользователя
-            status = user_data.get('status', 'online')
-            template_path = self.templates.get(status, self.templates['online'])
-            
+            # Получаем статус пользователя и конвертируем его в строчный вид
+            status = str(user_data.get('status', 'online')).lower()
+            # Маппинг статусов discord на наши шаблоны
+            status_mapping = {
+                'online': 'otemplate.png',
+                'idle': 'itemplate.png',
+                'dnd': 'dnttemplate.png',
+                'offline': 'offtemplate.png'
+            }
+
+            template_name = status_mapping.get(status, 'otemplate.png')
+            template_path = os.path.join(self.assets_path, 'templates', template_name)
+
             # Загружаем шаблон
             if not os.path.exists(template_path):
                 logger.error(f"Шаблон не найден: {template_path}")
@@ -103,55 +133,35 @@ class ProfileImageGenerator:
             if avatar_url:
                 avatar = await self.download_avatar(avatar_url)
                 if avatar:
-                    # Создаем круглый аватар
                     circular_avatar = self.create_circular_avatar(avatar, (238, 238))
-                    
-                    # Вставляем аватар на шаблон
                     background.paste(circular_avatar, (70, 158), circular_avatar)
             
             # Добавляем информацию о пользователе
             img = background
             
-            # Ник пользователя (лимит 12 символов)
+            # Ник пользователя
             nick = self.truncate_text(user_data.get('nickname', ''), 12)
             img = self.add_text_to_image(img, nick, (344, 207), 100)
             
-            # Дата создания/присоединения (лимит 21 символ)
+            # Дата создания/присоединения
             dates = f"{user_data.get('created_date', '')}/{user_data.get('joined_date', '')}"
             dates = self.truncate_text(dates, 21)
-            img = self.add_text_to_image(img, dates, (111, 448), 40)
-            
-            # Баланс (лимит 26 символов)
+            img = self.add_text_to_image(img, dates, (135, 448), 40)
+
+            # Баланс
             balance = f"{user_data.get('balance', 0)} руб"
             balance = self.truncate_text(balance, 26)
             img = self.add_text_to_image(img, balance, (91, 667), 64)
             
-            # Сообщения (лимит 27 символов)
+            # Сообщения
             messages = f"{user_data.get('messages', 0)} сообщений"
             messages = self.truncate_text(messages, 27)
             img = self.add_text_to_image(img, messages, (91, 793), 64)
             
-            # Время в голосовых каналах (лимит 28 символов)
+            # Время в голосовых каналах
             voice_time = f"{user_data.get('voice_time', '0:00:00')} в войсе"
             voice_time = self.truncate_text(voice_time, 28)
             img = self.add_text_to_image(img, voice_time, (91, 918), 64)
-            
-            # Добавляем статус контрибьютора
-            if user_data.get('is_contributor', False):
-                contributor_text = "Contributor"
-            else:
-                contributor_text = "User"
-            
-            img = self.add_text_to_image(img, contributor_text, (184, 541), 64)
-            
-            # Добавляем аватар по умолчанию (75x75)
-            if os.path.exists(self.default_avatar):
-                try:
-                    default_avatar = Image.open(self.default_avatar).convert("RGBA")
-                    circular_default = self.create_circular_avatar(default_avatar, (75, 75))
-                    img.paste(circular_default, (91, 549), circular_default)
-                except Exception as e:
-                    logger.warning(f"Не удалось добавить аватар по умолчанию: {e}")
             
             # Сохраняем изображение
             img.save(output_path, optimize=True, quality=95)

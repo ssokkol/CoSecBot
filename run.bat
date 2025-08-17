@@ -11,33 +11,25 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM Проверяем наличие виртуального окружения
+REM Проверяем наличие файла .env
+if not exist .env (
+    echo Ошибка: Файл .env не найден!
+    echo Создайте файл .env на основе env.example
+    pause
+    exit /b 1
+)
+
+REM Создаем виртуальное окружение, если его нет
 if not exist "venv" (
     echo Создание виртуального окружения...
     python -m venv venv
 )
 
-REM Активируем виртуальное окружение
-echo Активация виртуального окружения...
+REM Активируем виртуальное окружение и устанавливаем зависимости
 call venv\Scripts\activate.bat
-
-REM Устанавливаем зависимости
-echo Установка зависимостей...
-pip install -r requirements_refactored.txt
-
-REM Проверяем наличие .env файла
-if not exist ".env" (
-    echo Создание .env файла...
-    copy env.example .env
-    echo.
-    echo ВНИМАНИЕ: Создан файл .env на основе env.example
-    echo Отредактируйте .env файл, добавив ваш Discord токен!
-    echo.
-    pause
-)
+pip install -r requirements.txt
 
 REM Запускаем бота
-echo Запуск бота...
-python main_refactored.py
+python -m src.bot
 
 pause

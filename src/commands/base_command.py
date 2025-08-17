@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from discord import app_commands
+import discord
 from discord.ext import commands
 from typing import Any
 
@@ -10,7 +10,7 @@ class BaseCommand(ABC):
         self.bot = bot
     
     @abstractmethod
-    async def execute(self, interaction: app_commands.Interaction, **kwargs) -> None:
+    async def execute(self, interaction: discord.Interaction, **kwargs) -> None:
         """Выполняет команду"""
         pass
     

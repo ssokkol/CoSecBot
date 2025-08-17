@@ -1,5 +1,4 @@
 import discord
-from discord import app_commands
 from discord.ext import commands
 from typing import Optional
 from .base_command import BaseCommand
@@ -14,12 +13,18 @@ class AdminCommands(BaseCommand):
         self.user_db = user_db
         self.config = Config()
     
+    async def execute(self, interaction: discord.Interaction, **kwargs) -> None:
+        """
+        Базовый метод выполнения административной команды
+        """
+        pass
+
     def has_admin_role(self, member: discord.Member) -> bool:
         """Проверяет, есть ли у пользователя административная роль"""
         user_roles = [str(role.id) for role in member.roles]
         return any(role_id in self.config.ADMIN_ROLES for role_id in user_roles)
     
-    async def ban_user(self, interaction: app_commands.Interaction, user: discord.Member, reason: str) -> None:
+    async def ban_user(self, interaction: discord.Interaction, user: discord.Member, reason: str) -> None:
         """Банит пользователя"""
         if not self.has_admin_role(interaction.user):
             await interaction.response.send_message('У вас нет прав для выполнения этой команды', ephemeral=True)
@@ -47,7 +52,7 @@ class AdminCommands(BaseCommand):
         except Exception as e:
             await interaction.response.send_message(f'Ошибка при бане: {e}', ephemeral=True)
     
-    async def kick_user(self, interaction: app_commands.Interaction, user: discord.Member, reason: str) -> None:
+    async def kick_user(self, interaction: discord.Interaction, user: discord.Member, reason: str) -> None:
         """Кикает пользователя"""
         if not self.has_admin_role(interaction.user):
             await interaction.response.send_message('У вас нет прав для выполнения этой команды', ephemeral=True)
@@ -75,7 +80,7 @@ class AdminCommands(BaseCommand):
         except Exception as e:
             await interaction.response.send_message(f'Ошибка при кике: {e}', ephemeral=True)
     
-    async def mute_user(self, interaction: app_commands.Interaction, user: discord.Member, reason: str, time: int) -> None:
+    async def mute_user(self, interaction: discord.Interaction, user: discord.Member, reason: str, time: int) -> None:
         """Мьютит пользователя"""
         if not self.has_admin_role(interaction.user):
             await interaction.response.send_message('У вас нет прав для выполнения этой команды', ephemeral=True)
@@ -111,7 +116,7 @@ class AdminCommands(BaseCommand):
         except Exception as e:
             await interaction.response.send_message(f'Ошибка при муте: {e}', ephemeral=True)
     
-    async def give_money(self, interaction: app_commands.Interaction, user: discord.Member, amount: int) -> None:
+    async def give_money(self, interaction: discord.Interaction, user: discord.Member, amount: int) -> None:
         """Выдает деньги пользователю (только для админа)"""
         if interaction.user.id != self.config.ADMIN_USER_ID:
             await interaction.response.send_message('У вас нет прав для выполнения этой команды', ephemeral=True)
@@ -140,7 +145,7 @@ class AdminCommands(BaseCommand):
         except Exception as e:
             await interaction.response.send_message(f'Ошибка при выдаче денег: {e}', ephemeral=True)
     
-    async def remove_money(self, interaction: app_commands.Interaction, user: discord.Member, amount: int) -> None:
+    async def remove_money(self, interaction: discord.Interaction, user: discord.Member, amount: int) -> None:
         """Снимает деньги у пользователя (только для админа)"""
         if interaction.user.id != self.config.ADMIN_USER_ID:
             await interaction.response.send_message('У вас нет прав для выполнения этой команды', ephemeral=True)
