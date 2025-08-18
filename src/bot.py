@@ -137,25 +137,6 @@ class DiscordBot(commands.Bot):
         """Настраивает команды бота"""
         
         @self.tree.command(
-            name="rules", 
-            description="Правила сервера",
-            guild=discord.Object(id=self.config.GUILD_ID)
-        )
-        async def rules(interaction: discord.Interaction):
-            """Команда для отображения правил сервера"""
-            embed = discord.Embed(
-                color=0xffffff,
-                description='\n**1. Запрещено оскорбление администрации без причины**\n```БАН```\n'
-                           '**2. Запрещено оскорбление РФ**\n```БАН```\n'
-                           '**3. Запрещена пропаганда лгбт**\n```БАН```\n'
-                           '**4. Если вы хохол**\n```БАН```\n\n'
-                           '**5. Мемчики любого рода разрешены**\n'
-                           '**6. Нельзя спамить, спам мемчиков не в счет)**\n'
-                           '**7. Никаких разговоров про Геншин**'
-            )
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-        
-        @self.tree.command(
             name="help", 
             description="Список команд",
             guild=discord.Object(id=self.config.GUILD_ID)
@@ -163,8 +144,7 @@ class DiscordBot(commands.Bot):
         async def help(interaction: discord.Interaction):
             """Команда для отображения справки"""
             help_text = (
-                '/rules - список правил\n'
-                '/profile - ваша статистика на сервере\n\n'
+                '/profile - ��аша статистика на сервере\n\n'
                 '**Банковские операции**\n'
                 '/transfer - перевести деньги пользователю(комиссия 10%)\n\n'
                 '**Топ участников**\n'
@@ -191,6 +171,17 @@ class DiscordBot(commands.Bot):
                 user = interaction.user
             await self.profile_commands.show_profile(interaction, user)
         
+        @self.tree.command(
+            name="ping",
+            description="Проверить задержку бота"
+        )
+        async def ping(interaction: discord.Interaction):
+            """Простая команда для проверки задержки бота"""
+            await interaction.response.send_message(
+                f"🏓 Понг!\nЗадержка бота: {round(self.latency * 1000)}мс",
+                ephemeral=True
+            )
+
         # Административные команды
         @self.tree.command(
             name="ban", 
@@ -285,12 +276,12 @@ class DiscordBot(commands.Bot):
             else:
                 await self.user_db.add_message(message.author.id, 1)
         except Exception as e:
-            logger.error(f"Ошибка обработки статистики сообщений: {e}")
-    
+            logger.error(f"Ош��бка обработки статистики сообщений: {e}")
+
     async def run_bot(self):
         """Запускает бота"""
         try:
             await self.start(self.config.DISCORD_TOKEN)
         except Exception as e:
-            logger.error(f"Ошибка запуска бота: {e}")
+            logger.error(f"Ошибк�� запуска бота: {e}")
             raise
