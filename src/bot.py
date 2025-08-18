@@ -80,6 +80,8 @@ class DiscordBot(commands.Bot):
 
             # Синхронизация команд
             try:
+                swag = await self.tree.sync()
+                print(f"Синхронизировано {len(swag)} глобальных команд")
                 synced = await self.tree.sync(guild=discord.Object(id=self.config.GUILD_ID))
                 logger.info(f"Синхронизировано {len(synced)} команд")
             except Exception as e:
