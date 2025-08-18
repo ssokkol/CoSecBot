@@ -2,13 +2,23 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies and locales
 RUN apt-get update && apt-get install -y \
     fonts-liberation \
     libfreetype6-dev \
     libjpeg-dev \
     zlib1g-dev \
+    locales \
     && rm -rf /var/lib/apt/lists/*
+
+# Generate and set up Russian locale
+RUN sed -i '/ru_RU.UTF-8/s/^# //g' /etc/locale.gen && \
+    locale-gen && \
+    update-locale LANG=ru_RU.UTF-8
+
+ENV LANG ru_RU.UTF-8
+ENV LANGUAGE ru_RU:ru
+ENV LC_ALL ru_RU.UTF-8
 
 # Copy and install Python dependencies first
 COPY requirements.txt .

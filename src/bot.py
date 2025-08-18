@@ -42,11 +42,11 @@ class DiscordBot(commands.Bot):
         self.tree.add_command(self.global_commands)
 
         # Добавление глобальной команды ping
-        @self.tree.command(name="ping", description="Проверить задержку бота", guild=None)
+        @self.tree.command(name="ping", guild=None)
         async def ping(interaction: discord.Interaction):
             """Простая команда для проверки задержки бота"""
             await interaction.response.send_message(
-                f"🏓 Понг!\nЗадержка бота: {round(self.latency * 1000)}мс",
+                f"🏓 Понг!",
                 ephemeral=True
             )
 
@@ -92,21 +92,8 @@ class DiscordBot(commands.Bot):
             """Событие готовности бота"""
             logger.info(f'{self.user} успешно подключился к Discord!')
 
-            # Очистка и синхронизация команд
+            # Синхронизация команд
             try:
-                # Сначала очищаем все глобальные команды
-                self.tree.clear_commands(guild=None)
-                await self.tree.sync()
-                logger.info("Глобальные команды очищены")
-
-                # Затем регистрируем команды заново
-                @self.tree.command(name="ping", description="Проверить задержку бота")
-                async def ping(interaction: discord.Interaction):
-                    await interaction.response.send_message(
-                        f"🏓 Понг!\nЗадержка бота: {round(self.latency * 1000)}мс",
-                        ephemeral=True
-                    )
-
                 # Синхронизируем глобальные команды
                 await self.tree.sync()
                 logger.info("Глобальные команды обновлены")
@@ -114,7 +101,6 @@ class DiscordBot(commands.Bot):
                 # Синхронизируем команды сервера
                 await self.tree.sync(guild=discord.Object(id=self.config.GUILD_ID))
                 logger.info("Серверные команды обновлены")
-
             except Exception as e:
                 logger.error(f"Ошибка синхронизации команд: {e}")
 
