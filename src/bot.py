@@ -36,6 +36,15 @@ class DiscordBot(commands.Bot):
         # Инициализация конфигурации
         self.config = Config()
 
+        # Добавление глобальной команды ping
+        @self.tree.command(name="ping", description="Проверить задержку бота", guild=None)
+        async def ping(interaction: discord.Interaction):
+            """Простая команда для проверки задержки бота"""
+            await interaction.response.send_message(
+                f"🏓 Понг!\nЗадержка бота: {round(self.latency * 1000)}мс",
+                ephemeral=True
+            )
+
         # Инициализация базы данных
         self.db_manager = DatabaseManager('database.db')
         self.user_db = UserDatabase(self.db_manager)
@@ -81,10 +90,10 @@ class DiscordBot(commands.Bot):
             # Синхронизация команд
             try:
                 guild_commands = await self.tree.sync(guild=discord.Object(id=self.config.GUILD_ID))
-                logger.info(f"Синхронизировано {len(guild_commands)} серверных команд")
+                logger.info(f"Синхронизировано {len(guild_commands)} сервер��ых команд")
 
                 global_commands = await self.tree.sync()
-                logger.info(f"Синхронизировано {len(global_commands)} глобальных команд")
+                logger.info(f"Синхронизировано {len(global_commands)} гл��бальных команд")
             except Exception as e:
                 logger.error(f"Ошибка синхронизации команд: {e}")
 
@@ -155,7 +164,7 @@ class DiscordBot(commands.Bot):
                 '/messages - топ по сообщениям\n'
                 '/balance - топ по балансу\n\n'
                 '**Административные команды**\n'
-                '/ban - забанить пользователя\n'
+                '/ban - забанить пользоват��ля\n'
                 '/kick - кикнуть пользователя\n'
                 '/mute - замутить пользователя\n'
                 '/give - выдать деньги\n'
@@ -174,17 +183,6 @@ class DiscordBot(commands.Bot):
                 user = interaction.user
             await self.profile_commands.show_profile(interaction, user)
         
-        @self.tree.command(
-            name="ping",
-            description="Проверить задержку бота"
-        )
-        async def ping(interaction: discord.Interaction):
-            """Простая команда для проверки задержки бота"""
-            await interaction.response.send_message(
-                f"🏓 Понг!\nЗадержка бота: {round(self.latency * 1000)}мс",
-                ephemeral=True
-            )
-
         # Административные команды
         @self.tree.command(
             name="ban", 
@@ -270,7 +268,7 @@ class DiscordBot(commands.Bot):
             await self.top_commands.show_balance_top(interaction)
     
     async def handle_message_statistics(self, message):
-        """Обрабатывает статистику сообщений"""
+        """Об��абатывает статистику сообщений"""
         try:
             if not await self.user_db.user_exists(message.author.id):
                 await self.user_db.add_user(message.author.id)
