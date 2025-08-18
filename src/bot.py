@@ -13,6 +13,7 @@ from src.commands.admin_commands import AdminCommands
 from src.commands.economy_commands import EconomyCommands
 from src.commands.top_commands import TopCommands
 from src.commands.profile_commands import ProfileCommands
+from src.commands.global_commands import GlobalCommands
 
 # Настройка логирования
 logging.basicConfig(
@@ -35,6 +36,10 @@ class DiscordBot(commands.Bot):
 
         # Инициализация конфигурации
         self.config = Config()
+
+        # Инициализация глобальных команд
+        self.global_commands = GlobalCommands(self)
+        self.tree.add_command(self.global_commands)
 
         # Добавление глобальной команды ping
         @self.tree.command(name="ping", description="Проверить задержку бота", guild=None)
@@ -87,13 +92,29 @@ class DiscordBot(commands.Bot):
             """Событие готовности бота"""
             logger.info(f'{self.user} успешно подключился к Discord!')
 
-            # Синхронизация команд
+            # Очистка и синхронизация команд
             try:
-                guild_commands = await self.tree.sync(guild=discord.Object(id=self.config.GUILD_ID))
-                logger.info(f"Синхронизировано {len(guild_commands)} сервер��ых команд")
+                # Сначала очищаем все глобальные команды
+                self.tree.clear_commands(guild=None)
+                await self.tree.sync()
+                logger.info("Глобальные команды очищены")
 
-                global_commands = await self.tree.sync()
-                logger.info(f"Синхронизировано {len(global_commands)} гл��бальных команд")
+                # Затем регистрируем команды заново
+                @self.tree.command(name="ping", description="Проверить задержку бота")
+                async def ping(interaction: discord.Interaction):
+                    await interaction.response.send_message(
+                        f"🏓 Понг!\nЗадержка бота: {round(self.latency * 1000)}мс",
+                        ephemeral=True
+                    )
+
+                # Синхронизируем глобальные команды
+                await self.tree.sync()
+                logger.info("Глобальные команды обновлены")
+
+                # Синхронизируем команды сервера
+                await self.tree.sync(guild=discord.Object(id=self.config.GUILD_ID))
+                logger.info("Серверные команды обновлены")
+
             except Exception as e:
                 logger.error(f"Ошибка синхронизации команд: {e}")
 
@@ -156,7 +177,7 @@ class DiscordBot(commands.Bot):
         async def help(interaction: discord.Interaction):
             """Команда для отображения справки"""
             help_text = (
-                '/profile - ��аша статистика на сервере\n\n'
+                '/profile - ��аша статистика на серве��е\n\n'
                 '**Банковские операции**\n'
                 '/transfer - перевести деньги пользователю(комиссия 10%)\n\n'
                 '**Топ участников**\n'
@@ -232,7 +253,7 @@ class DiscordBot(commands.Bot):
         # Экономические команды
         @self.tree.command(
             name="transfer", 
-            description="Перевести деньги пользователю (комиссия 10%)",
+            description="Перевести деньги пользователю (ко��иссия 10%)",
             guild=discord.Object(id=self.config.GUILD_ID)
         )
         async def transfer(interaction: discord.Interaction, user: discord.Member, amount: int):
