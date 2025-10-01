@@ -13,7 +13,27 @@ class AdminCommands(BaseCommand):
         super().__init__(bot)
         self.user_db = user_db
         self.config = Config()
-    
+        # Роли в порядке убывания важности
+        self.role_hierarchy = [
+            1406251918489292963,
+            1406251918489292964,# Высшая роль
+            1406255286573994026,
+            1406252612843470969
+        ]
+
+    def get_role_level(self, member: discord.Member) -> int:
+        """Получает уровень роли пользователя в иерархии"""
+        for i, role_id in enumerate(self.role_hierarchy):
+            if any(role.id == role_id for role in member.roles):
+                return i
+        return len(self.role_hierarchy)  # Возвращаем значение ниже всех ролей если ни одной нет
+
+    def can_moderate(self, moderator: discord.Member, target: discord.Member) -> bool:
+        """Проверяет, может ли модератор применять действия к цели"""
+        mod_level = self.get_role_level(moderator)
+        target_level = self.get_role_level(target)
+        return mod_level < target_level  # True если роль модератора выше (меньше индекс)
+
     async def execute(self, interaction: discord.Interaction, **kwargs) -> None:
         """
         Базовый метод выполнения административной команды
@@ -32,6 +52,10 @@ class AdminCommands(BaseCommand):
         """Банит пользователя"""
         if not self.has_admin_role(interaction.user):
             await interaction.response.send_message('У вас нет прав для выполнения этой команды', ephemeral=True)
+            return
+
+        if not self.can_moderate(interaction.user, user):
+            await interaction.response.send_message('Вы не можете забанить пользователя с равной или более высокой ролью', ephemeral=True)
             return
 
         try:
@@ -61,7 +85,11 @@ class AdminCommands(BaseCommand):
         if not (self.has_admin_role(interaction.user) or self.has_mod_role(interaction.user)):
             await interaction.response.send_message('У вас нет прав для выполнения этой команды', ephemeral=True)
             return
-        
+
+        if not self.can_moderate(interaction.user, user):
+            await interaction.response.send_message('Вы не можете кикнуть пользователя с равной или более высокой ролью', ephemeral=True)
+            return
+
         try:
             # Отправляем сообщение о кике в личку
             channel = await user.create_dm()
@@ -89,7 +117,11 @@ class AdminCommands(BaseCommand):
         if not (self.has_admin_role(interaction.user) or self.has_mod_role(interaction.user)):
             await interaction.response.send_message('У вас нет прав для выполнения этой команды', ephemeral=True)
             return
-        
+
+        if not self.can_moderate(interaction.user, user):
+            await interaction.response.send_message('Вы не можете замьютить пользователя с равной или более высокой ролью', ephemeral=True)
+            return
+
         if time > 38880:  # Максимум 38880 минут
             await interaction.response.send_message('Максимальное время мута: 38880 минут', ephemeral=True)
             return
