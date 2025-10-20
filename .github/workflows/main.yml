@@ -24,6 +24,11 @@ jobs:
         port: 22
         script: |
           cd ~/CoSecBot
+          # Отменяем все локальные изменения в отслеживаемых файлах
+          git reset --hard HEAD
+          # Очищаем только отслеживаемые файлы, сохраняя файлы из .gitignore
+          git clean -X
+          # Получаем последние изменения
           git pull origin main
           # Остановка только контейнера бота
           docker-compose stop bot
