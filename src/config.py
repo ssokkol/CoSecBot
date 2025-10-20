@@ -38,3 +38,7 @@ class Config:
         self.VOICE_TIME_REWARD = int(os.getenv('VOICE_TIME_REWARD', 1))
         self.VOICE_MONEY_REWARD = int(os.getenv('VOICE_MONEY_REWARD', 20))
         self.VOICE_CHECK_INTERVAL = int(os.getenv('VOICE_CHECK_INTERVAL', 1))
+
+        # Настройки динамических голосовых каналов
+        self.DYNAMIC_VOICE_CATEGORY_ID = int(os.getenv('DYNAMIC_VOICE_CATEGORY_ID', 0))
+        self.DYNAMIC_VOICE_LOBBY_ID = int(os.getenv('DYNAMIC_VOICE_LOBBY_ID', 0))
