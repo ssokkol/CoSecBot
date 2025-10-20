@@ -14,6 +14,7 @@ from src.commands.economy_commands import EconomyCommands
 from src.commands.top_commands import TopCommands
 from src.commands.profile_commands import ProfileCommands
 from src.commands.global_commands import GlobalCommands
+from src.commands.voice_commands import VoiceCommands
 
 # Настройка логирования
 logging.basicConfig(
@@ -63,6 +64,7 @@ class DiscordBot(commands.Bot):
         self.economy_commands = EconomyCommands(self, self.user_db)
         self.top_commands = TopCommands(self, self.top_db)
         self.profile_commands = ProfileCommands(self, self.user_db)
+        self.voice_commands = VoiceCommands(self)
         
         # Настройка локали
         try:
@@ -86,6 +88,11 @@ class DiscordBot(commands.Bot):
     
     def setup_events(self):
         """Настраивает события бота"""
+
+        @self.event
+        async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+            """Обработчик изменения состояния голосового канала"""
+            await self.voice_commands.handle_voice_state_update(member, before, after)
 
         @self.event
         async def on_ready():
