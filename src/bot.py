@@ -170,7 +170,7 @@ class DiscordBot(commands.Bot):
         async def help(interaction: discord.Interaction):
             """Команда для отображения справки"""
             help_text = (
-                '/profile - ��аша статистика на серве��е\n\n'
+                '/profile - Ваша статистика на сервере\n\n'
                 '**Банковские операции**\n'
                 '/transfer - перевести деньги пользователю(комиссия 10%)\n\n'
                 '**Топ участников**\n'
