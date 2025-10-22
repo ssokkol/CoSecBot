@@ -10,6 +10,8 @@ class Config:
         # Discord конфигурация
         self.DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
         self.GUILD_ID = int(os.getenv('GUILD_ID', 0))
+        self.ADMIN_USER_ID = os.getenv('ADMIN_USER_ID')
+        self.ADMIN_ROLES = os.getenv('ADMIN_ROLES', '')
 
         # Роли администраторов разных уровней
         admin_roles = os.getenv('ADMIN_ROLES', '').split(',')
