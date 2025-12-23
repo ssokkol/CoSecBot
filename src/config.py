@@ -44,3 +44,12 @@ class Config:
         # Настройки динамических голосовых каналов
         self.DYNAMIC_VOICE_CATEGORY_ID = int(os.getenv('DYNAMIC_VOICE_CATEGORY_ID', 0))
         self.DYNAMIC_VOICE_LOBBY_ID = int(os.getenv('DYNAMIC_VOICE_LOBBY_ID', 0))
+
+        # Spotify API конфигурация
+        self.SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID', '')
+        self.SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET', '')
+
+        # Настройки музыкального плеера
+        self.MUSIC_INACTIVITY_TIMEOUT = int(os.getenv('MUSIC_INACTIVITY_TIMEOUT', 300))
+        self.MUSIC_MAX_QUEUE_SIZE = int(os.getenv('MUSIC_MAX_QUEUE_SIZE', 100))
+        self.MUSIC_DEFAULT_VOLUME = int(os.getenv('MUSIC_DEFAULT_VOLUME', 50))

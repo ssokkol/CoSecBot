@@ -15,6 +15,7 @@ from src.commands.top_commands import TopCommands
 from src.commands.profile_commands import ProfileCommands
 from src.commands.global_commands import GlobalCommands
 from src.commands.voice_commands import VoiceCommands
+from src.commands.music_commands import MusicCommands
 
 # Настройка логирования
 logging.basicConfig(
@@ -65,6 +66,7 @@ class DiscordBot(commands.Bot):
         self.top_commands = TopCommands(self, self.top_db)
         self.profile_commands = ProfileCommands(self, self.user_db)
         self.voice_commands = VoiceCommands(self)
+        self.music_commands = MusicCommands(self)
         
         # Настройка локали
         try:
@@ -93,6 +95,16 @@ class DiscordBot(commands.Bot):
         async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
             """Обработчик изменения состояния голосового канала"""
             await self.voice_commands.handle_voice_state_update(member, before, after)
+            
+            # Проверяем, нужно ли отключить музыкального бота
+            if before.channel and not member.bot:
+                guild_id = before.channel.guild.id
+                vc = self.music_commands.player.get_voice_client(guild_id)
+                if vc and vc.channel and vc.channel.id == before.channel.id:
+                    # Проверяем, остались ли люди в канале
+                    human_members = [m for m in before.channel.members if not m.bot]
+                    if len(human_members) == 0:
+                        await self.music_commands.player.check_inactivity(guild_id)
 
         @self.event
         async def on_ready():
@@ -177,8 +189,14 @@ class DiscordBot(commands.Bot):
                 '/voice - топ по времени в войсе\n'
                 '/messages - топ по сообщениям\n'
                 '/balance - топ по балансу\n\n'
+                '**Музыка**\n'
+                '/play - воспроизвести трек (YouTube/Spotify URL или поиск)\n'
+                '/skip - пропустить текущий трек\n'
+                '/queue - показать очередь воспроизведения\n'
+                '/stop - остановить воспроизведение\n'
+                '/pause - пауза/возобновление\n\n'
                 '**Административные команды**\n'
-                '/ban - забанить пользоват��ля\n'
+                '/ban - забанить пользователя\n'
                 '/kick - кикнуть пользователя\n'
                 '/mute - замутить пользователя\n'
                 '/give - выдать деньги\n'
@@ -280,6 +298,53 @@ class DiscordBot(commands.Bot):
         async def balance(interaction: discord.Interaction):
             """Команда для показа топа по балансу"""
             await self.top_commands.show_balance_top(interaction)
+        
+        # Музыкальные команды
+        @self.tree.command(
+            name="play",
+            description="Воспроизвести трек (YouTube/Spotify URL или поисковый запрос)",
+            guild=discord.Object(id=self.config.GUILD_ID)
+        )
+        @app_commands.describe(query="URL или название трека для поиска")
+        async def play(interaction: discord.Interaction, query: str):
+            """Команда воспроизведения музыки"""
+            await self.music_commands.play(interaction, query)
+        
+        @self.tree.command(
+            name="skip",
+            description="Пропустить текущий трек",
+            guild=discord.Object(id=self.config.GUILD_ID)
+        )
+        async def skip(interaction: discord.Interaction):
+            """Команда пропуска трека"""
+            await self.music_commands.skip(interaction)
+        
+        @self.tree.command(
+            name="queue",
+            description="Показать очередь воспроизведения",
+            guild=discord.Object(id=self.config.GUILD_ID)
+        )
+        async def queue(interaction: discord.Interaction):
+            """Команда отображения очереди"""
+            await self.music_commands.show_queue(interaction)
+        
+        @self.tree.command(
+            name="stop",
+            description="Остановить воспроизведение и очистить очередь",
+            guild=discord.Object(id=self.config.GUILD_ID)
+        )
+        async def stop(interaction: discord.Interaction):
+            """Команда остановки воспроизведения"""
+            await self.music_commands.stop(interaction)
+        
+        @self.tree.command(
+            name="pause",
+            description="Поставить на паузу или возобновить воспроизведение",
+            guild=discord.Object(id=self.config.GUILD_ID)
+        )
+        async def pause(interaction: discord.Interaction):
+            """Команда паузы/возобновления"""
+            await self.music_commands.pause(interaction)
     
     async def handle_message_statistics(self, message):
         """Об��абатывает статистику сообщений"""

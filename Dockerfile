@@ -2,13 +2,14 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies and locales
+# Install system dependencies, FFmpeg and locales
 RUN apt-get update && apt-get install -y \
     fonts-liberation \
     libfreetype6-dev \
     libjpeg-dev \
     zlib1g-dev \
     locales \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Generate and set up Russian locale
