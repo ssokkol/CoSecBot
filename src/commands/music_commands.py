@@ -94,8 +94,22 @@ class MusicControlView(discord.ui.View):
         await interaction.response.send_message("⏭️ Трек пропущен", ephemeral=True)
     
     @discord.ui.button(emoji="⏹️", style=discord.ButtonStyle.danger)
-    async def stop(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def stop_playback(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.music_commands.player.stop(self.guild_id)
+        
+        # Возвращаем активность по умолчанию
+        try:
+            activity = discord.Activity(
+                type=discord.ActivityType.listening,
+                name=self.music_commands.bot.config.BOT_ACTIVITY_NAME
+            )
+            await self.music_commands.bot.change_presence(
+                activity=activity,
+                status=discord.Status.do_not_disturb
+            )
+        except Exception as e:
+            pass
+        
         await interaction.response.send_message("⏹️ Воспроизведение остановлено", ephemeral=True)
         self.stop()
 
@@ -174,7 +188,10 @@ class MusicCommands(BaseCommand):
                 type=discord.ActivityType.listening,
                 name=item.track.display_name[:128]  # Discord limit
             )
-            await self.bot.change_presence(activity=activity)
+            await self.bot.change_presence(
+                activity=activity,
+                status=discord.Status.do_not_disturb
+            )
         except Exception as e:
             logger.error(f"Ошибка смены активности: {e}")
         
