@@ -18,6 +18,7 @@ from ..music import (
     Track,
     QueueItem
 )
+from ..music.permissions import PermissionLevel
 
 logger = logging.getLogger(__name__)
 
@@ -146,8 +147,37 @@ class MusicCommands(BaseCommand):
     async def before_inactivity_check(self):
         await self.bot.wait_until_ready()
     
+    def _check_channel_permission(self, interaction: discord.Interaction) -> tuple[bool, str]:
+        """
+        Проверяет, может ли пользователь использовать музыкальные команды в этом канале.
+        
+        Returns:
+            Кортеж (разрешено, сообщение об ошибке)
+        """
+        # Админы и модераторы могут использовать везде
+        level = self.permissions.get_user_permission_level(interaction.user)
+        if level >= PermissionLevel.MODERATOR:
+            return True, ""
+        
+        # Обычные пользователи - только в музыкальном канале
+        music_channel_id = self.bot.config.MUSIC_CHANNEL_ID
+        if music_channel_id and interaction.channel_id != music_channel_id:
+            return False, f"❌ Музыкальные команды доступны только в <#{music_channel_id}>"
+        
+        return True, ""
+    
     async def _on_track_start(self, guild_id: int, item: QueueItem):
         """Callback при старте трека"""
+        # Меняем активность бота на текущий трек
+        try:
+            activity = discord.Activity(
+                type=discord.ActivityType.listening,
+                name=item.track.display_name[:128]  # Discord limit
+            )
+            await self.bot.change_presence(activity=activity)
+        except Exception as e:
+            logger.error(f"Ошибка смены активности: {e}")
+        
         channel_id = self._notification_channels.get(guild_id)
         if not channel_id:
             return
@@ -166,6 +196,19 @@ class MusicCommands(BaseCommand):
     
     async def _on_queue_empty(self, guild_id: int):
         """Callback при опустошении очереди"""
+        # Возвращаем активность по умолчанию
+        try:
+            activity = discord.Activity(
+                type=discord.ActivityType.listening,
+                name=self.bot.config.BOT_ACTIVITY_NAME
+            )
+            await self.bot.change_presence(
+                activity=activity,
+                status=discord.Status.do_not_disturb
+            )
+        except Exception as e:
+            logger.error(f"Ошибка смены активности: {e}")
+        
         channel_id = self._notification_channels.get(guild_id)
         if not channel_id:
             return
@@ -274,6 +317,12 @@ class MusicCommands(BaseCommand):
     
     async def play(self, interaction: discord.Interaction, query: str):
         """Команда воспроизведения"""
+        # Проверяем канал
+        allowed, error_msg = self._check_channel_permission(interaction)
+        if not allowed:
+            await interaction.response.send_message(error_msg, ephemeral=True)
+            return
+        
         await interaction.response.defer()
         
         # Проверяем, что пользователь в голосовом канале
@@ -424,6 +473,12 @@ class MusicCommands(BaseCommand):
     
     async def skip(self, interaction: discord.Interaction):
         """Команда пропуска трека"""
+        # Проверяем канал
+        allowed, error_msg = self._check_channel_permission(interaction)
+        if not allowed:
+            await interaction.response.send_message(error_msg, ephemeral=True)
+            return
+        
         guild_id = interaction.guild_id
         
         if not self.player.is_connected(guild_id):
@@ -467,6 +522,12 @@ class MusicCommands(BaseCommand):
     
     async def show_queue(self, interaction: discord.Interaction):
         """Команда отображения очереди"""
+        # Проверяем канал
+        allowed, error_msg = self._check_channel_permission(interaction)
+        if not allowed:
+            await interaction.response.send_message(error_msg, ephemeral=True)
+            return
+        
         guild_id = interaction.guild_id
         
         if not self.player.is_connected(guild_id):
@@ -483,6 +544,12 @@ class MusicCommands(BaseCommand):
     
     async def stop(self, interaction: discord.Interaction):
         """Команда остановки воспроизведения"""
+        # Проверяем канал
+        allowed, error_msg = self._check_channel_permission(interaction)
+        if not allowed:
+            await interaction.response.send_message(error_msg, ephemeral=True)
+            return
+        
         guild_id = interaction.guild_id
         
         if not self.player.is_connected(guild_id):
@@ -498,6 +565,19 @@ class MusicCommands(BaseCommand):
         if guild_id in self._notification_channels:
             del self._notification_channels[guild_id]
         
+        # Возвращаем активность по умолчанию
+        try:
+            activity = discord.Activity(
+                type=discord.ActivityType.listening,
+                name=self.bot.config.BOT_ACTIVITY_NAME
+            )
+            await self.bot.change_presence(
+                activity=activity,
+                status=discord.Status.do_not_disturb
+            )
+        except Exception as e:
+            logger.error(f"Ошибка смены активности: {e}")
+        
         embed = discord.Embed(
             title="⏹️ Воспроизведение остановлено",
             description="Очередь очищена, бот отключен",
@@ -508,6 +588,12 @@ class MusicCommands(BaseCommand):
     
     async def pause(self, interaction: discord.Interaction):
         """Команда паузы"""
+        # Проверяем канал
+        allowed, error_msg = self._check_channel_permission(interaction)
+        if not allowed:
+            await interaction.response.send_message(error_msg, ephemeral=True)
+            return
+        
         guild_id = interaction.guild_id
         state = self.player.get_state(guild_id)
         

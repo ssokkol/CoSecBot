@@ -53,3 +53,4 @@ class Config:
         self.MUSIC_INACTIVITY_TIMEOUT = int(os.getenv('MUSIC_INACTIVITY_TIMEOUT', 300))
         self.MUSIC_MAX_QUEUE_SIZE = int(os.getenv('MUSIC_MAX_QUEUE_SIZE', 100))
         self.MUSIC_DEFAULT_VOLUME = int(os.getenv('MUSIC_DEFAULT_VOLUME', 50))
+        self.MUSIC_CHANNEL_ID = int(os.getenv('MUSIC_CHANNEL_ID', 0)) or None

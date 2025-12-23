@@ -58,6 +58,9 @@ class MusicPlayer:
         # Счетчики retry
         self._retry_counts: Dict[int, int] = {}
         self._max_retries = 3
+        
+        # Event loop для корректной работы callback'ов
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
     
     def get_state(self, guild_id: int) -> GuildMusicState:
         """Получает или создает состояние для сервера"""
@@ -328,6 +331,9 @@ class MusicPlayer:
     
     async def _play_next(self, guild_id: int):
         """Воспроизводит следующий трек из очереди"""
+        # Сохраняем ссылку на event loop для callback'а
+        self._loop = asyncio.get_running_loop()
+        
         queue = self.get_queue(guild_id)
         state = self.get_state(guild_id)
         vc = self.get_voice_client(guild_id)
@@ -380,7 +386,7 @@ class MusicPlayer:
                 source,
                 after=lambda e: asyncio.run_coroutine_threadsafe(
                     self._on_track_finished(guild_id, e),
-                    asyncio.get_event_loop()
+                    self._loop
                 )
             )
             
