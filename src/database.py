@@ -16,22 +16,38 @@ class DatabaseManager:
     
     async def _init_database(self):
         """Инициализирует базу данных с нужными таблицами"""
+        import os
         try:
-            import os
+            # Получаем абсолютный путь
+            if not os.path.isabs(self.db_path):
+                self.db_path = os.path.abspath(self.db_path)
+            
             # Создаем директорию для базы данных, если её нет
             db_dir = os.path.dirname(self.db_path)
             if db_dir and not os.path.exists(db_dir):
                 os.makedirs(db_dir, exist_ok=True)
+                logger.debug(f"Создана директория для БД: {db_dir}")
             
             # Создаем файл базы данных, если его нет
             if not os.path.exists(self.db_path):
-                open(self.db_path, 'a').close()
-                # Устанавливаем права на запись
                 try:
-                    os.chmod(self.db_path, 0o666)
-                except Exception:
-                    pass  # Игнорируем ошибки прав в Windows
+                    with open(self.db_path, 'w') as f:
+                        pass  # Создаем пустой файл
+                    # Устанавливаем права на запись
+                    try:
+                        os.chmod(self.db_path, 0o666)
+                    except Exception:
+                        pass  # Игнорируем ошибки прав в Windows
+                    logger.debug(f"Создан файл БД: {self.db_path}")
+                except Exception as e:
+                    logger.error(f"Не удалось создать файл БД {self.db_path}: {e}")
+                    raise
             
+            # Проверяем права на запись
+            if not os.access(self.db_path, os.W_OK):
+                logger.warning(f"Нет прав на запись в файл БД: {self.db_path}")
+            
+            # Подключаемся и создаем таблицы
             async with aiosqlite.connect(self.db_path) as conn:
                 await conn.execute('''
                     CREATE TABLE IF NOT EXISTS users (
@@ -46,6 +62,7 @@ class DatabaseManager:
                 logger.info(f"База данных инициализирована успешно: {self.db_path}")
         except Exception as e:
             logger.error(f"Ошибка инициализации базы данных {self.db_path}: {e}")
+            logger.error(f"Текущая рабочая директория: {os.getcwd()}")
             raise
     
     async def execute_query(self, query: str, params: tuple = ()) -> bool:
@@ -54,8 +71,12 @@ class DatabaseManager:
             try:
                 # Инициализируем БД при первом использовании
                 if not hasattr(self, '_initialized'):
-                    await self._init_database()
-                    self._initialized = True
+                    try:
+                        await self._init_database()
+                        self._initialized = True
+                    except Exception as e:
+                        logger.error(f"Критическая ошибка инициализации БД: {e}")
+                        return False
                 
                 async with aiosqlite.connect(self.db_path) as conn:
                     await conn.execute(query, params)
@@ -63,6 +84,7 @@ class DatabaseManager:
                     return True
             except Exception as e:
                 logger.error(f"Ошибка выполнения запроса: {e}")
+                logger.error(f"Путь к БД: {self.db_path}")
                 return False
     
     async def fetch_one(self, query: str, params: tuple = ()) -> Optional[tuple]:
@@ -71,14 +93,19 @@ class DatabaseManager:
             try:
                 # Инициализируем БД при первом использовании
                 if not hasattr(self, '_initialized'):
-                    await self._init_database()
-                    self._initialized = True
+                    try:
+                        await self._init_database()
+                        self._initialized = True
+                    except Exception as e:
+                        logger.error(f"Критическая ошибка инициализации БД: {e}")
+                        return None
                 
                 async with aiosqlite.connect(self.db_path) as conn:
                     async with conn.execute(query, params) as cursor:
                         return await cursor.fetchone()
             except Exception as e:
                 logger.error(f"Ошибка получения записи: {e}")
+                logger.error(f"Путь к БД: {self.db_path}")
                 return None
     
     async def fetch_all(self, query: str, params: tuple = ()) -> List[tuple]:
@@ -87,14 +114,19 @@ class DatabaseManager:
             try:
                 # Инициализируем БД при первом использовании
                 if not hasattr(self, '_initialized'):
-                    await self._init_database()
-                    self._initialized = True
+                    try:
+                        await self._init_database()
+                        self._initialized = True
+                    except Exception as e:
+                        logger.error(f"Критическая ошибка инициализации БД: {e}")
+                        return []
                 
                 async with aiosqlite.connect(self.db_path) as conn:
                     async with conn.execute(query, params) as cursor:
                         return await cursor.fetchall()
             except Exception as e:
                 logger.error(f"Ошибка получения записей: {e}")
+                logger.error(f"Путь к БД: {self.db_path}")
                 return []
 
 class UserDatabase:
