@@ -5,9 +5,9 @@ services:
     build: .
     volumes:
       - ./logs:/app/logs
-      - ./database.db:/app/database.db
+      - ./club.db:/app/club.db
       - ./assets:/app/assets
-    environment:
-      - DISCORD_TOKEN=${DISCORD_TOKEN}
+    env_file:
+      - .env
     command: python main.py
     restart: unless-stopped

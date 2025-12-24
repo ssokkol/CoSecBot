@@ -5,6 +5,8 @@ import asyncio
 import locale
 import logging
 from typing import Optional
+from datetime import datetime, date
+import os
 
 from src.config import Config
 from src.database import DatabaseManager, UserDatabase, TopDatabase
@@ -38,6 +40,9 @@ class DiscordBot(commands.Bot):
 
         # Инициализация конфигурации
         self.config = Config()
+        
+        # Отслеживание последней отправки базы данных
+        self._last_backup_date = None
 
         # Инициализация глобальных команд
         self.global_commands = GlobalCommands(self)
@@ -53,7 +58,7 @@ class DiscordBot(commands.Bot):
             )
 
         # Инициализация базы данных
-        self.db_manager = DatabaseManager('database.db')
+        self.db_manager = DatabaseManager(self.config.DATABASE_PATH)
         self.user_db = UserDatabase(self.db_manager)
         self.top_db = TopDatabase(self.db_manager)
         
@@ -85,6 +90,9 @@ class DiscordBot(commands.Bot):
         
         # Запуск задачи проверки голосовых каналов
         self.voice_check.start()
+        
+        # Запуск задачи отправки базы данных
+        self.database_backup.start()
         
         logger.info("DiscordBot инициализирован успешно")
     
@@ -170,6 +178,60 @@ class DiscordBot(commands.Bot):
     async def before_voice_check(self):
         """Ожидает готовности бота перед запуском задачи"""
         await self.wait_until_ready()
+    
+    @tasks.loop(hours=24)
+    async def database_backup(self):
+        """Отправляет базу данных в канал каждый 4-й день месяца"""
+        try:
+            today = datetime.now()
+            today_date = today.date()
+            
+            # Проверяем, является ли сегодня 4-м числом месяца
+            if today.day == 4:
+                # Проверяем, не отправляли ли мы уже сегодня
+                if self._last_backup_date == today_date:
+                    return
+                
+                backup_channel_id = 1406254861351125132
+                channel = self.get_channel(backup_channel_id)
+                
+                if not channel:
+                    logger.warning(f"Канал {backup_channel_id} не найден")
+                    return
+                
+                db_path = self.config.DATABASE_PATH
+                
+                # Проверяем существование файла базы данных
+                if not os.path.exists(db_path):
+                    logger.warning(f"Файл базы данных {db_path} не найден")
+                    return
+                
+                # Отправляем файл базы данных
+                try:
+                    with open(db_path, 'rb') as db_file:
+                        # Формируем имя файла с датой
+                        date_str = today.strftime('%Y-%m-%d')
+                        filename = f"backup_{date_str}_{os.path.basename(db_path)}"
+                        
+                        file = discord.File(db_file, filename=filename)
+                        await channel.send(
+                            f"📦 Резервная копия базы данных от {date_str}",
+                            file=file
+                        )
+                        self._last_backup_date = today_date
+                        logger.info(f"База данных отправлена в канал {backup_channel_id}")
+                except Exception as e:
+                    logger.error(f"Ошибка отправки базы данных: {e}")
+                    
+        except Exception as e:
+            logger.error(f"Ошибка в задаче резервного копирования: {e}")
+    
+    @database_backup.before_loop
+    async def before_database_backup(self):
+        """Ожидает готовности бота перед запуском задачи"""
+        await self.wait_until_ready()
+        # Небольшая задержка после запуска
+        await asyncio.sleep(60)  # Ждем 1 минуту после запуска
     
     def setup_commands(self):
         """Настраивает команды бота"""
@@ -345,6 +407,24 @@ class DiscordBot(commands.Bot):
         async def pause(interaction: discord.Interaction):
             """Команда паузы/возобновления"""
             await self.music_commands.pause(interaction)
+        
+        @self.tree.command(
+            name="loop",
+            description="Переключить режим повтора (трек/очередь/выкл)",
+            guild=discord.Object(id=self.config.GUILD_ID)
+        )
+        async def loop(interaction: discord.Interaction):
+            """Команда переключения режима повтора"""
+            await self.music_commands.loop(interaction)
+        
+        @self.tree.command(
+            name="clear",
+            description="Очистить очередь треков (требует прав модератора)",
+            guild=discord.Object(id=self.config.GUILD_ID)
+        )
+        async def clear(interaction: discord.Interaction):
+            """Команда очистки очереди"""
+            await self.music_commands.clear(interaction)
     
     async def handle_message_statistics(self, message):
         """Об��абатывает статистику сообщений"""

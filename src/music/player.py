@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 import discord
 from discord.ext import tasks
 
-from .models import Track, QueueItem, GuildMusicState
+from .models import Track, QueueItem, GuildMusicState, LoopMode
 from .queue import TrackQueue
 from .youtube import YouTubeExtractor, FFMPEG_OPTIONS
 
@@ -329,6 +329,110 @@ class MusicPlayer:
             return True
         return False
     
+    def set_loop_mode(self, guild_id: int, mode: LoopMode) -> bool:
+        """
+        Устанавливает режим повтора.
+        
+        Args:
+            guild_id: ID сервера
+            mode: Режим повтора (LoopMode.NONE, LoopMode.TRACK, LoopMode.QUEUE)
+            
+        Returns:
+            True если успешно
+        """
+        state = self.get_state(guild_id)
+        state.loop_mode = mode
+        logger.info(f"Режим повтора установлен: {mode.value} для сервера {guild_id}")
+        return True
+    
+    def get_loop_mode(self, guild_id: int) -> LoopMode:
+        """
+        Получает текущий режим повтора.
+        
+        Args:
+            guild_id: ID сервера
+            
+        Returns:
+            Текущий режим повтора
+        """
+        state = self.get_state(guild_id)
+        return state.loop_mode
+    
+    def clear_queue(self, guild_id: int) -> int:
+        """
+        Очищает очередь треков (оставляет текущий трек).
+        
+        Args:
+            guild_id: ID сервера
+            
+        Returns:
+            Количество удаленных треков
+        """
+        queue = self.get_queue(guild_id)
+        cleared_count = len(queue._queue)
+        queue._queue.clear()
+        queue._update_positions()
+        logger.info(f"Очередь очищена, удалено {cleared_count} треков")
+        return cleared_count
+    
+    async def _play_track(self, guild_id: int, item: QueueItem):
+        """Воспроизводит конкретный трек"""
+        # Сохраняем ссылку на event loop для callback'а
+        self._loop = asyncio.get_running_loop()
+        
+        state = self.get_state(guild_id)
+        queue = self.get_queue(guild_id)
+        vc = self.get_voice_client(guild_id)
+        
+        if not vc or not vc.is_connected():
+            logger.warning("VoiceClient не подключен")
+            state.is_playing = False
+            return
+        
+        queue.current = item
+        state.current_track = item
+        
+        # Получаем URL потока
+        stream_url = await self._youtube.get_stream_url(item.track)
+        
+        if not stream_url:
+            logger.error(f"Не удалось получить stream URL для {item.track.title}")
+            if self._on_error:
+                await self._on_error(guild_id, "Не удалось воспроизвести трек")
+            return
+        
+        try:
+            # Создаем аудио источник
+            source = discord.FFmpegPCMAudio(stream_url, **FFMPEG_OPTIONS)
+            source = discord.PCMVolumeTransformer(source, volume=state.volume / 100)
+            
+            # Воспроизводим
+            vc.play(
+                source,
+                after=lambda e: asyncio.run_coroutine_threadsafe(
+                    self._on_track_finished(guild_id, e),
+                    self._loop
+                )
+            )
+            
+            state.is_playing = True
+            state.is_paused = False
+            state.update_activity()
+            
+            logger.info(f"Воспроизведение: {item.track.display_name}")
+            
+            if self._on_track_start:
+                await self._on_track_start(guild_id, item)
+            
+            # Предзагружаем следующий трек
+            await self._preload_next(guild_id)
+            
+        except Exception as e:
+            logger.error(f"Ошибка воспроизведения: {e}")
+            state.is_playing = False
+            if self._on_error:
+                await self._on_error(guild_id, str(e))
+    
     async def _play_next(self, guild_id: int):
         """Воспроизводит следующий трек из очереди"""
         # Сохраняем ссылку на event loop для callback'а
@@ -418,6 +522,28 @@ class MusicPlayer:
         
         if self._on_track_end and state.current_track:
             await self._on_track_end(guild_id, state.current_track)
+        
+        # Обработка режимов повтора
+        if state.loop_mode == LoopMode.TRACK and state.current_track:
+            # Повтор текущего трека - воспроизводим его снова
+            current = state.current_track
+            logger.debug(f"Повтор трека: {current.track.title}")
+            # Просто воспроизводим текущий трек снова
+            await self._play_track(guild_id, current)
+            return
+        elif state.loop_mode == LoopMode.QUEUE and state.current_track:
+            # Повтор очереди - возвращаем трек в конец очереди
+            current = state.current_track
+            queue._queue.append(
+                QueueItem(
+                    track=current.track,
+                    requester_id=current.requester_id,
+                    requester_name=current.requester_name,
+                    position=len(queue._queue) + 2
+                )
+            )
+            queue._update_positions()
+            logger.debug(f"Трек {current.track.title} добавлен в конец очереди для повтора")
         
         # Воспроизводим следующий
         await self._play_next(guild_id)

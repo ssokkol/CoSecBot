@@ -18,6 +18,7 @@ from ..music import (
     Track,
     QueueItem
 )
+from ..music.models import LoopMode
 from ..music.permissions import PermissionLevel
 
 logger = logging.getLogger(__name__)
@@ -290,6 +291,15 @@ class MusicCommands(BaseCommand):
         """Создает embed для очереди"""
         queue = self.player.get_queue(guild_id)
         data = queue.to_embed_data(page=page, per_page=10)
+        state = self.player.get_state(guild_id)
+        
+        # Получаем режим повтора
+        loop_mode = state.loop_mode
+        loop_text = ""
+        if loop_mode == LoopMode.TRACK:
+            loop_text = "🔂 Повтор трека"
+        elif loop_mode == LoopMode.QUEUE:
+            loop_text = "🔁 Повтор очереди"
         
         embed = discord.Embed(
             title="📜 Очередь воспроизведения",
@@ -299,9 +309,12 @@ class MusicCommands(BaseCommand):
         # Текущий трек
         if data['current']:
             current = data['current']
+            current_text = f"**{current['title']}**\n⏱️ {current['duration']} | Запросил: {current['requester']}"
+            if loop_mode == LoopMode.TRACK:
+                current_text += "\n🔂 Повтор трека"
             embed.add_field(
                 name="▶️ Сейчас играет",
-                value=f"**{current['title']}**\n⏱️ {current['duration']} | Запросил: {current['requester']}",
+                value=current_text,
                 inline=False
             )
             if current['thumbnail']:
@@ -325,10 +338,11 @@ class MusicCommands(BaseCommand):
                 inline=False
             )
         
-        embed.set_footer(
-            text=f"Страница {data['current_page']}/{data['total_pages']} | "
-                 f"Общее время: {data['total_duration']}"
-        )
+        footer_text = f"Страница {data['current_page']}/{data['total_pages']} | Общее время: {data['total_duration']}"
+        if loop_text:
+            footer_text += f" | {loop_text}"
+        
+        embed.set_footer(text=footer_text)
         
         return embed
     
@@ -624,6 +638,82 @@ class MusicCommands(BaseCommand):
                 await interaction.response.send_message("⏸️ Пауза")
             else:
                 await interaction.response.send_message("❌ Не удалось поставить на паузу", ephemeral=True)
+    
+    async def loop(self, interaction: discord.Interaction):
+        """Команда переключения режима повтора"""
+        # Проверяем канал
+        allowed, error_msg = self._check_channel_permission(interaction)
+        if not allowed:
+            await interaction.response.send_message(error_msg, ephemeral=True)
+            return
+        
+        guild_id = interaction.guild_id
+        
+        if not self.player.is_connected(guild_id):
+            await interaction.response.send_message(
+                "❌ Бот не воспроизводит музыку",
+                ephemeral=True
+            )
+            return
+        
+        current_mode = self.player.get_loop_mode(guild_id)
+        
+        # Переключаем режим: NONE -> TRACK -> QUEUE -> NONE
+        if current_mode == LoopMode.NONE:
+            new_mode = LoopMode.TRACK
+            mode_text = "🔂 Повтор трека"
+        elif current_mode == LoopMode.TRACK:
+            new_mode = LoopMode.QUEUE
+            mode_text = "🔁 Повтор очереди"
+        else:  # QUEUE
+            new_mode = LoopMode.NONE
+            mode_text = "▶️ Без повтора"
+        
+        self.player.set_loop_mode(guild_id, new_mode)
+        
+        embed = discord.Embed(
+            title="🔄 Режим повтора изменен",
+            description=mode_text,
+            color=discord.Color.blue()
+        )
+        
+        await interaction.response.send_message(embed=embed)
+    
+    async def clear(self, interaction: discord.Interaction):
+        """Команда очистки очереди"""
+        # Проверяем канал
+        allowed, error_msg = self._check_channel_permission(interaction)
+        if not allowed:
+            await interaction.response.send_message(error_msg, ephemeral=True)
+            return
+        
+        guild_id = interaction.guild_id
+        
+        if not self.player.is_connected(guild_id):
+            await interaction.response.send_message(
+                "❌ Бот не воспроизводит музыку",
+                ephemeral=True
+            )
+            return
+        
+        # Проверяем права на очистку очереди
+        result = self.permissions.can_clear_queue(interaction.user)
+        if not result.allowed:
+            await interaction.response.send_message(
+                f"❌ {result.reason}",
+                ephemeral=True
+            )
+            return
+        
+        cleared_count = self.player.clear_queue(guild_id)
+        
+        embed = discord.Embed(
+            title="🗑️ Очередь очищена",
+            description=f"Удалено треков: **{cleared_count}**",
+            color=discord.Color.orange()
+        )
+        
+        await interaction.response.send_message(embed=embed)
     
     async def execute(self, interaction: discord.Interaction, **kwargs) -> None:
         """Абстрактный метод выполнения команды"""

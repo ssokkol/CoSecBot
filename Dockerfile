@@ -32,8 +32,8 @@ RUN mkdir -p /app/logs /app/assets/avatars /app/assets/badges /app/assets/fonts 
 # Copy the rest of the application
 COPY . .
 
-# Ensure database directory is writable
-RUN touch database.db && chmod 666 database.db
+# Ensure database file is writable (create if doesn't exist)
+RUN touch /app/club.db && chmod 666 /app/club.db || true
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1

@@ -15,6 +15,13 @@ class TrackSource(Enum):
     SEARCH = "search"
 
 
+class LoopMode(Enum):
+    """Режим повтора воспроизведения"""
+    NONE = "none"      # Без повтора
+    TRACK = "track"    # Повтор текущего трека
+    QUEUE = "queue"    # Повтор всей очереди
+
+
 @dataclass
 class Track:
     """Модель трека"""
@@ -40,8 +47,7 @@ class Track:
     @property
     def display_name(self) -> str:
         """Возвращает отображаемое имя трека"""
-        if self.artist:
-            return f"{self.artist} - {self.title}"
+        # Возвращаем только название видео, без исполнителя/канала
         return self.title
     
     def to_dict(self) -> dict:
@@ -99,7 +105,7 @@ class GuildMusicState:
     is_playing: bool = False
     is_paused: bool = False
     volume: int = 50
-    loop_mode: bool = False
+    loop_mode: LoopMode = LoopMode.NONE
     last_activity: datetime = field(default_factory=datetime.now)
     channel_owner_id: Optional[int] = None  # ID пользователя, который первым вызвал бота
     
