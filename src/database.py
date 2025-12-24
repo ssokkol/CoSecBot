@@ -17,6 +17,7 @@ class DatabaseManager:
     async def _init_database(self):
         """Инициализирует базу данных с нужными таблицами"""
         import os
+        import stat
         try:
             # Получаем абсолютный путь
             if not os.path.isabs(self.db_path):
@@ -28,20 +29,32 @@ class DatabaseManager:
                 os.makedirs(db_dir, exist_ok=True)
                 logger.debug(f"Создана директория для БД: {db_dir}")
             
+            # Проверяем, не является ли путь директорией (проблема с Docker volumes)
+            if os.path.exists(self.db_path) and os.path.isdir(self.db_path):
+                logger.warning(f"Путь {self.db_path} является директорией, используем data/club.db")
+                # Используем директорию data для хранения БД
+                data_dir = self.db_path
+                self.db_path = os.path.join(data_dir, 'club.db')
+            
             # Создаем файл базы данных, если его нет
             if not os.path.exists(self.db_path):
                 try:
-                    with open(self.db_path, 'w') as f:
+                    # Создаем файл с режимом записи
+                    with open(self.db_path, 'wb') as f:
                         pass  # Создаем пустой файл
                     # Устанавливаем права на запись
                     try:
-                        os.chmod(self.db_path, 0o666)
+                        os.chmod(self.db_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH | stat.S_IWOTH)
                     except Exception:
                         pass  # Игнорируем ошибки прав в Windows
                     logger.debug(f"Создан файл БД: {self.db_path}")
                 except Exception as e:
                     logger.error(f"Не удалось создать файл БД {self.db_path}: {e}")
                     raise
+            
+            # Проверяем, что это файл, а не директория
+            if os.path.isdir(self.db_path):
+                raise Exception(f"Путь {self.db_path} является директорией, а не файлом")
             
             # Проверяем права на запись
             if not os.access(self.db_path, os.W_OK):
@@ -63,6 +76,9 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"Ошибка инициализации базы данных {self.db_path}: {e}")
             logger.error(f"Текущая рабочая директория: {os.getcwd()}")
+            logger.error(f"Существует ли путь: {os.path.exists(self.db_path) if self.db_path else 'N/A'}")
+            if self.db_path and os.path.exists(self.db_path):
+                logger.error(f"Это директория: {os.path.isdir(self.db_path)}")
             raise
     
     async def execute_query(self, query: str, params: tuple = ()) -> bool:

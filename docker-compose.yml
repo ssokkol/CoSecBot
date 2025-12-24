@@ -5,7 +5,7 @@ services:
     build: .
     volumes:
       - ./logs:/app/logs
-      - ./club.db:/app/club.db
+      - ./data:/app/data
       - ./assets:/app/assets
     env_file:
       - .env
